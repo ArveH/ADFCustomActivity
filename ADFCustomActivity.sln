@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.26430.15
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MoveBlobCustomActivity", "MoveBlobCustomActivity\MoveBlobCustomActivity.csproj", "{510B72C3-B6A6-4BFE-9BB0-DCE1AE8075D1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestCustomActivity", "TestCustomActivity\TestCustomActivity.csproj", "{2E8E303B-8977-47A3-917D-167E1E4CDEE3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{510B72C3-B6A6-4BFE-9BB0-DCE1AE8075D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{510B72C3-B6A6-4BFE-9BB0-DCE1AE8075D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{510B72C3-B6A6-4BFE-9BB0-DCE1AE8075D1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2E8E303B-8977-47A3-917D-167E1E4CDEE3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2E8E303B-8977-47A3-917D-167E1E4CDEE3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2E8E303B-8977-47A3-917D-167E1E4CDEE3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2E8E303B-8977-47A3-917D-167E1E4CDEE3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
