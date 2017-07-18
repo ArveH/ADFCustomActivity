@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.Management.DataFactories.Models;
 using Microsoft.Azure.Management.DataFactories.Runtime;
 using Microsoft.WindowsAzure.Storage;
@@ -122,19 +123,6 @@ namespace MoveBlobCustomActivityNS
             }
         }
 
-        private void DeleteBlobs(
-            CloudBlobClient blobStorageClient, 
-            AzureBlobDataset blobDataset, 
-            IActivityLogger logger)
-        {
-            LogBlobDataSetInfo(blobDataset, logger);
-
-            var folderPath = blobDataset.FolderPath;
-
-            var blobs = blobStorageClient.ListBlobs(folderPath, true).ToList();
-            logger.Write($"Found {blobs.Count}");
-        }
-
         private static void LogBlobDataSetInfo(AzureBlobDataset blobDataset, IActivityLogger logger)
         {
             logger.Write("\nBlob folder: " + blobDataset.FolderPath);
@@ -163,6 +151,48 @@ namespace MoveBlobCustomActivityNS
                 blobDataset.FolderPath.Substring(
                     blobDataset.FolderPath.IndexOf("/", StringComparison.InvariantCulture) + 1);
             logger.Write("\nDirectory Name {0}", directoryName);
+        }
+
+        private void DeleteBlobs(
+            CloudBlobClient blobStorageClient, 
+            AzureBlobDataset blobDataset, 
+            IActivityLogger logger)
+        {
+            LogBlobDataSetInfo(blobDataset, logger);
+
+            var folderPath = blobDataset.FolderPath;
+
+            if (blobStorageClient == null)
+                throw new Exception("BlobStorageClient is null in DeleteBlobs");
+
+            logger.Write("Get blobs.....");
+            var rawBlobs = blobStorageClient.ListBlobs(folderPath, true);
+            logger.Write("Got rawBlobs");
+
+            if (rawBlobs == null)
+                throw new Exception("Null value when getting blobs");
+
+            int count = 0;
+            foreach (var listBlobItem in rawBlobs)
+            {
+                logger.Write($"Deleting {listBlobItem.Uri.AbsolutePath}");
+                ((CloudBlockBlob) listBlobItem).DeleteIfExistsAsync();
+                count++;
+            }
+            logger.Write($"Finished deleting {count} blobs");
+            //var blobs = rawBlobs as IList<IListBlobItem> ?? rawBlobs.ToList();
+            //logger.Write("Got blobs");
+
+            //logger.Write($"Found {blobs.Count} blobs in {folderPath}");
+            //if (blobs.Count == 0) return;
+
+            //Parallel.ForEach(
+            //    rawBlobs,
+            //    x =>
+            //    {
+            //        logger.Write($"Deleting {x.Uri.AbsolutePath}");
+            //        ((CloudBlockBlob)x).DeleteIfExistsAsync();
+            //    });
         }
 
         public void DeleteBlobFileFolder(
