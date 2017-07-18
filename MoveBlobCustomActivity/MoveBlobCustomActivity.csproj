@@ -98,6 +98,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BlobStoreHelper.cs" />
+    <Compile Include="CrossAppDomainDotNetActivity.cs" />
+    <Compile Include="ICrossAppDomainDotNetActivity.cs" />
+    <Compile Include="MoveBlobActivityContext.cs" />
     <Compile Include="MoveBlobCustomActivity.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
