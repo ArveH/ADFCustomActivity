@@ -43,20 +43,17 @@ namespace MoveBlobCustomActivityNS
             string containerName,
             string folderPath)
         {
-            IList<IListBlobItem> blobs;
-
             try
             {
-                _logger.Write("Get BlobResultSegment.....");
-                var blobResultSegment = await _cloudBlobClient.ListBlobsSegmentedAsync(
-                    containerName+folderPath, true, BlobListingDetails.None, 1000, null, null, null);
-                _logger.Write("Got BlobResultSegment");
+                var container = _cloudBlobClient.GetContainerReference(containerName);
+                if (!await container.ExistsAsync())
+                    throw new Exception($"Blob container {containerName} doesn't exist");
 
-                if (blobResultSegment?.Results == null)
-                    throw new Exception("Null value when getting blobResultSegment");
+                _logger.Write("Get IListBlobItems from {0}\\{1}.....", containerName, folderPath);
+                var blobItems = container.ListBlobs();
+                _logger.Write("Finished getting blobs");
 
-                blobs = blobResultSegment.Results as IList<IListBlobItem> ?? blobResultSegment.Results.ToList();
-                _logger.Write("Got rawBlobs");
+                return new List<IListBlobItem>(blobItems);
 
             }
             catch (Exception ex)
@@ -65,7 +62,6 @@ namespace MoveBlobCustomActivityNS
                 _logger.Write(msg);
                 throw;
             }
-            return blobs;
         }
 
 

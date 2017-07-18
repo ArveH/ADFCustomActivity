@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Threading.Tasks;
+using FluentAssertions;
 using Microsoft.Azure.Management.DataFactories.Runtime;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
@@ -18,12 +20,15 @@ namespace TestCustomActivity
         }
 
         [TestMethod]
-        public void TestInitialize()
+        public async Task TestGetBlobs()
         {
             var logMock = new Mock<IActivityLogger>();
             logMock.Setup(l => l.Write(It.IsAny<string>()));
 ;
             var helper = new BlobStoreHelper(logMock.Object, _blobStoreConnectionString);
+            var blobs = await helper.GetBlobsAsync("dimpsdata", "");
+
+            blobs.Count.Should().BeGreaterThan(0, "because we have blobs");
         }
     }
 }
