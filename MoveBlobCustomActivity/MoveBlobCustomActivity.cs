@@ -17,16 +17,16 @@ namespace MoveBlobCustomActivityNS
         {
             LogDataFactoryElements(linkedServices, datasets, activity, logger);
 
-            // Process ADF artifacts up front as these objects are not serializable across app domain boundaries.
-            Dataset dataset = datasets.First(ds => ds.Name == activity.Inputs.Single().Name);
-            var blobProperties = (AzureBlobDataset) dataset.Properties.TypeProperties;
-            LinkedService linkedService =
-                linkedServices.First(ls => ls.Name == dataset.Properties.LinkedServiceName);
-            var storageProperties = (AzureStorageLinkedService) linkedService.Properties.TypeProperties;
+            var inputDataSet = GetInputDataset(datasets, activity);
+            var blobStoreDataset = inputDataSet.Properties.TypeProperties as AzureBlobDataset;
+            LogBlobDataSetInfo(blobStoreDataset, logger);
+            var inputLinkedService = GetInputLinkedService(linkedServices, inputDataSet);
+
             return new MoveBlobActivityContext
             {
-                ConnectionString = storageProperties.ConnectionString,
-                FolderPath = blobProperties.FolderPath,
+                ConnectionString = GetConnectionString(inputLinkedService),
+                ContainerName = GetContainerName(blobStoreDataset),
+                FolderPath = GetDirectoryName(blobStoreDataset)
             };
 
         }
@@ -37,17 +37,11 @@ namespace MoveBlobCustomActivityNS
         {
             try
             {
-                var inputDataSet = GetInputDataset(datasets, activity);
-                var inputLinkedService = GetInputLinkedService(linkedServices, inputDataSet);
-
-                CloudBlobClient blobStorageClient = GetBlobStorageClient(
-                    inputLinkedService,
-                    logger);
-
-                DeleteBlobs(
-                    blobStorageClient,
-                    inputDataSet.Properties.TypeProperties as AzureBlobDataset,
-                    logger);
+                var blobStoreHelper = new BlobStoreHelper(
+                    logger, context.ConnectionString);
+                var blobs = blobStoreHelper.GetBlobsAsync(
+                    context.ContainerName, context.FolderPath).GetAwaiter().GetResult();
+                logger.Write("Found {0} blobs", blobs.Count);
 
                 logger.Write("Custom Activity Ended Successfully.");
             }
@@ -67,46 +61,31 @@ namespace MoveBlobCustomActivityNS
             return datasets.First(ds => ds.Name == activity.Inputs.First().Name);
         }
 
-        private static AzureStorageLinkedService GetInputLinkedService(
+        private static LinkedService GetInputLinkedService(
             IEnumerable<LinkedService> linkedServices,
             Dataset inputDataset)
         {
             return
                 linkedServices
-                    .First(ls => ls.Name == inputDataset.Properties.LinkedServiceName)
-                    .Properties
-                    .TypeProperties as AzureStorageLinkedService;
+                    .First(ls => ls.Name == inputDataset.Properties.LinkedServiceName);
         }
 
-        private static void LogBlobDataSetInfo(AzureBlobDataset blobDataset, IActivityLogger logger)
+        private static string GetConnectionString(LinkedService inputLinkedService)
         {
-            logger.Write("\nBlob folder: " + blobDataset.FolderPath);
-            logger.Write("\nBlob format: " + blobDataset.Format);
+            var azureStorageLinkedService = (AzureStorageLinkedService) inputLinkedService.Properties.TypeProperties;
+            return azureStorageLinkedService.ConnectionString;
+        }
 
-            var partitions = blobDataset.PartitionedBy?.Count ?? 0;
-            logger.Write($"\nPartitions ({partitions}):");
-            for (int i = 0; i < partitions; i++)
-            {
-                logger.Write(
-                    $"\n\t{blobDataset.PartitionedBy?[i].Name ?? "null"}: {blobDataset.PartitionedBy?[i]?.Value}");
-            }
+        private static string GetDirectoryName(AzureBlobDataset blobDataset)
+        {
+            return blobDataset.FolderPath.Substring(
+                blobDataset.FolderPath.IndexOf("/", StringComparison.InvariantCulture) + 1);
+        }
 
-            logger.Write("\nBlob file: " + blobDataset.FileName);
-
-            if (blobDataset.FolderPath.IndexOf("/", StringComparison.InvariantCulture) <= 0)
-            {
-                throw new Exception($"Can't find container name for dataset '{blobDataset.FolderPath}'");
-            }
-
-            string containerName =
-                blobDataset.FolderPath.Substring(0,
-                    blobDataset.FolderPath.IndexOf("/", StringComparison.InvariantCulture));
-            logger.Write("\nContainer Name {0}", containerName);
-
-            string directoryName =
-                blobDataset.FolderPath.Substring(
-                    blobDataset.FolderPath.IndexOf("/", StringComparison.InvariantCulture) + 1);
-            logger.Write("\nDirectory Name {0}", directoryName);
+        private static string GetContainerName(AzureBlobDataset blobDataset)
+        {
+            return blobDataset.FolderPath.Substring(0,
+                blobDataset.FolderPath.IndexOf("/", StringComparison.InvariantCulture));
         }
 
         private void LogDataFactoryElements(IEnumerable<LinkedService> linkedServices,
@@ -138,6 +117,30 @@ namespace MoveBlobCustomActivityNS
             {
                 logger.Write("\nOutput Dataset: " + name);
             }
+        }
+
+        private static void LogBlobDataSetInfo(AzureBlobDataset blobDataset, IActivityLogger logger)
+        {
+            logger.Write("\nBlob folder: " + blobDataset.FolderPath);
+            logger.Write("\nBlob format: " + blobDataset.Format);
+
+            var partitions = blobDataset.PartitionedBy?.Count ?? 0;
+            logger.Write($"\nPartitions ({partitions}):");
+            for (int i = 0; i < partitions; i++)
+            {
+                logger.Write(
+                    $"\n\t{blobDataset.PartitionedBy?[i].Name ?? "null"}: {blobDataset.PartitionedBy?[i]?.Value}");
+            }
+
+            logger.Write("\nBlob file: " + blobDataset.FileName);
+
+            if (blobDataset.FolderPath.IndexOf("/", StringComparison.InvariantCulture) <= 0)
+            {
+                throw new Exception($"Can't find container name for dataset '{blobDataset.FolderPath}'");
+            }
+
+            logger.Write("\nContainer Name {0}", GetContainerName(blobDataset));
+            logger.Write("\nDirectory Name {0}", GetDirectoryName(blobDataset));
         }
     }
 }
