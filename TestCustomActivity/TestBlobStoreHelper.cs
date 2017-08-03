@@ -42,13 +42,13 @@ namespace TestCustomActivity
         }
 
         [TestMethod]
-        public async Task TestGetBlobs()
+        public async Task TestListBlobs()
         {
             var logMock = new Mock<IActivityLogger>();
             logMock.Setup(l => l.Write(It.IsAny<string>()));
 ;
             var helper = new BlobStoreHelper(logMock.Object, _blobStoreConnectionString);
-            var blobs = await helper.GetBlobsAsync("dimpsdata", "");
+            var blobs = await helper.ListBlobsAsync("dimpsdata", "");
 
             blobs.Count.Should().BeGreaterThan(2, "because we have blobs");
         }
@@ -60,11 +60,11 @@ namespace TestCustomActivity
             logMock.Setup(l => l.Write(It.IsAny<string>()));
 
             var helper = new BlobStoreHelper(logMock.Object, _blobStoreConnectionString);
-            var blobs = await helper.GetBlobsAsync("dimpsdata", "");
+            var blobs = await helper.ListBlobsAsync("dimpsdata", "");
             blobs.Count.Should().BeGreaterThan(2, "because we have blobs");
 
             await helper.DeleteBlobsAsync(_cloudBlobContainer.Name, "");
-            blobs = await helper.GetBlobsAsync("dimpsdata", "");
+            blobs = await helper.ListBlobsAsync("dimpsdata", "");
             blobs.Count.Should().BeGreaterThan(0, "because blobs should have been deleted");
         }
 

@@ -26,7 +26,7 @@ namespace MoveBlobCustomActivityNS
             string containerName,
             string folderPath)
         {
-            var blobs = await GetBlobsAsync(containerName, folderPath);
+            var blobs = await ListBlobsAsync(containerName, folderPath);
 
             int count = 0;
             foreach (var blob in blobs)
@@ -38,7 +38,7 @@ namespace MoveBlobCustomActivityNS
             _logger.Write($"Finished deleting {count} blobs");
         }
 
-        public async Task<IList<IListBlobItem>> GetBlobsAsync(
+        public async Task<IList<IListBlobItem>> ListBlobsAsync(
             string containerName,
             string folderPath)
         {
