@@ -1,4 +1,8 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.Azure.Management.DataFactories.Runtime;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -15,57 +19,74 @@ namespace TestCustomActivity
         private static string _blobStoreConnectionString;
         private static CloudBlobClient _cloudBlobClient;
         private static CloudBlobContainer _cloudBlobContainer;
+        private static string _containerName;
+
+        private BlobStoreHelper _blobStoreHelper;
+        private readonly string _testFileName1 = "testfile1.txt";
+        private readonly string _testFileName2 = "testfile2.txt";
+        private readonly string _fileContent1 = "some text";
+        private readonly string _fileContent2 = "some more text";
 
         [ClassInitialize]
         public static void TestClassInitialize(TestContext context)
         {
             _blobStoreConnectionString = context.Properties["BlobStoreConnectionString"].ToString();
-            var blobContainerName = context.Properties["BlobStoreContainer"].ToString();
+            _containerName = context.Properties["BlobStoreContainer"].ToString();
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(_blobStoreConnectionString);
             _cloudBlobClient = storageAccount.CreateCloudBlobClient();
-            _cloudBlobContainer = _cloudBlobClient.GetContainerReference(blobContainerName);
+            _cloudBlobContainer = _cloudBlobClient.GetContainerReference(_containerName);
             _cloudBlobContainer.CreateIfNotExists();
         }
 
         [TestInitialize]
         public void Setup()
         {
-            CreateFile("testfile1.txt", "Some text");
-            CreateFile("testfile2.txt", "Some text here too");
+            CreateFile(_testFileName1, _fileContent1);
+            CreateFile(_testFileName2, _fileContent2);
+
+            var logMock = new Mock<IActivityLogger>();
+            logMock.Setup(l => l.Write(It.IsAny<string>()));
+
+            _blobStoreHelper = new BlobStoreHelper(logMock.Object, _blobStoreConnectionString, _containerName);
         }
 
         [TestCleanup]
         public void Cleanup()
         {
-            DeleteFile("testfile1.txt");
-            DeleteFile("testfile2.txt");
+            DeleteFile(_testFileName1);
+            DeleteFile(_testFileName2);
         }
 
         [TestMethod]
-        public async Task TestListBlobs()
+        public void TestListBlobs()
         {
-            var logMock = new Mock<IActivityLogger>();
-            logMock.Setup(l => l.Write(It.IsAny<string>()));
-;
-            var helper = new BlobStoreHelper(logMock.Object, _blobStoreConnectionString);
-            var blobs = await helper.ListBlobsAsync("dimpsdata", "");
+            var blobs = _blobStoreHelper.ListBlobs(_containerName, "");
 
-            blobs.Count.Should().BeGreaterThan(2, "because we have blobs");
+            blobs.Count.Should().Be(2);
         }
+
+        [TestMethod]
+        public async Task TestGetBlobStream()
+        {
+            var blobs = _blobStoreHelper.ListBlobs(_containerName, "");
+            blobs.Count.Should().Be(2);
+
+            var txt = await GetBlobTextAsync(blobs[0].Uri);
+            txt.Should().Be(_fileContent1);
+            txt = await GetBlobTextAsync(blobs[1].Uri);
+            txt.Should().Be(_fileContent2);
+        }
+
 
         [TestMethod]
         public async Task TestDeleteBlobs()
         {
-            var logMock = new Mock<IActivityLogger>();
-            logMock.Setup(l => l.Write(It.IsAny<string>()));
+            var blobs = _blobStoreHelper.ListBlobs(_containerName, "");
+            blobs.Count.Should().Be(2, "because we have blobs");
 
-            var helper = new BlobStoreHelper(logMock.Object, _blobStoreConnectionString);
-            var blobs = await helper.ListBlobsAsync("dimpsdata", "");
-            blobs.Count.Should().BeGreaterThan(2, "because we have blobs");
-
-            await helper.DeleteBlobsAsync(_cloudBlobContainer.Name, "");
-            blobs = await helper.ListBlobsAsync("dimpsdata", "");
-            blobs.Count.Should().BeGreaterThan(0, "because blobs should have been deleted");
+            await _blobStoreHelper.DeleteBlobsAsync(_cloudBlobContainer.Name, "");
+            blobs = _blobStoreHelper.ListBlobs(_containerName, "");
+            blobs.Count.Should().Be(0, "because blobs should have been deleted");
         }
 
 
@@ -79,6 +100,14 @@ namespace TestCustomActivity
         {
             var blob = _cloudBlobContainer.GetBlockBlobReference(fileName);
             blob.DeleteIfExists();
+        }
+
+        private async Task<string> GetBlobTextAsync(Uri uri)
+        {
+            using (var stream = await _blobStoreHelper.GetBlobStreamAsync(uri))
+            {
+                return Encoding.UTF8.GetString(stream.ToArray());
+            }
         }
     }
 }

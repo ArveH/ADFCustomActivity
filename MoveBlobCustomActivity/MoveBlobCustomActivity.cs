@@ -34,9 +34,9 @@ namespace MoveBlobCustomActivityNS
             try
             {
                 var blobStoreHelper = new BlobStoreHelper(
-                    logger, context.ConnectionString);
-                var blobs = blobStoreHelper.ListBlobsAsync(
-                    context.ContainerName, context.FolderPath).GetAwaiter().GetResult();
+                    logger, context.ConnectionString, context.ContainerName);
+                var blobs = blobStoreHelper.ListBlobs(
+                    context.ContainerName, context.FolderPath);
                 logger.Write("Found {0} blobs", blobs.Count);
 
                 logger.Write("Custom Activity Ended Successfully.");
