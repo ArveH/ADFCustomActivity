@@ -65,15 +65,12 @@ namespace MoveBlobCustomActivityNS
             }
         }
 
-
         public async Task<MemoryStream> GetBlobStreamAsync(Uri blobUri)
         {
             var blob = await _cloudBlobClient.GetBlobReferenceFromServerAsync(blobUri);
-            using (var stream = new MemoryStream())
-            {
-                await blob.DownloadToStreamAsync(stream);
-                return stream;
-            }
+            var stream = new MemoryStream();
+            await blob.DownloadToStreamAsync(stream);
+            return stream;
         }
 
         private CloudBlobClient GetCloudBlobClient(IActivityLogger logger)

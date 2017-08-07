@@ -89,6 +89,22 @@ namespace TestCustomActivity
             fileExists.Should().BeTrue("because file was uploaded");
         }
 
+        [TestMethod]
+        public async Task TestCopyFromBlobStoreToAdls()
+        {
+            var blobs = _blobStoreHelper.ListBlobs(_containerName, "");
+            blobs.Count.Should().Be(2);
+
+            var adlsPath = $"{_containerName}/{_testFileName1}";
+            using (var stream = await _blobStoreHelper.GetBlobStreamAsync(blobs[0].Uri))
+            {
+                await _adlsHelper.UploadFromStreamAsync(stream, adlsPath);
+            }
+
+            var fileExists = await _adlsHelper.FileExistsAsync(adlsPath);
+            fileExists.Should().BeTrue();
+        }
+
         #region Adls stuff
 
         private static AdlsHelper _adlsHelper;
