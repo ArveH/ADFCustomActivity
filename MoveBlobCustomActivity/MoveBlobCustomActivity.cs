@@ -18,13 +18,23 @@ namespace MoveBlobCustomActivityNS
             LogBlobDataSetInfo(blobStoreDataset, logger);
             var inputLinkedService = GetInputLinkedService(linkedServices, inputDataSet);
 
+            var outputDataSet = GetOutputDataSet(datasets, activity);
+            var adlsDataSet = outputDataSet.Properties.TypeProperties as AzureDataLakeStoreDataset;
+            LogAzureDataLakeStoreInfo(adlsDataSet, logger);
+            var outputLinkedService = GetOutputLinkedService(linkedServices, outputDataSet);
+
             return new MoveBlobActivityContext
             {
-                ConnectionString = GetConnectionString(inputLinkedService),
-                ContainerName = GetContainerName(blobStoreDataset),
-                FolderPath = GetDirectoryName(blobStoreDataset)
+                BlobStorageConnectionString = GetConnectionString(inputLinkedService),
+                ContainerName = GetContainerName(blobStoreDataset.FolderPath),
+                BlobStorageFolderPath = GetDirectoryName(blobStoreDataset.FolderPath)
             };
 
+        }
+
+        private LinkedService GetOutputLinkedService(IEnumerable<LinkedService> linkedServices, Dataset outputDataSet)
+        {
+            throw new NotImplementedException();
         }
 
         public override IDictionary<string, string> Execute(
@@ -33,13 +43,20 @@ namespace MoveBlobCustomActivityNS
         {
             try
             {
+                logger.Write("******** Custom Activity Ended Successfully ********");
                 var blobStoreHelper = new BlobStoreHelper(
-                    logger, context.ConnectionString, context.ContainerName);
+                    logger, context.BlobStorageConnectionString, context.ContainerName);
                 var blobs = blobStoreHelper.ListBlobs(
-                    context.ContainerName, context.FolderPath);
-                logger.Write("Found {0} blobs", blobs.Count);
+                    context.ContainerName, context.BlobStorageFolderPath);
+                logger.Write("Found {0} blobs on storage account", blobs.Count);
 
-                logger.Write("Custom Activity Ended Successfully.");
+                foreach (var blob in blobs)
+                {
+                    //var stream = blobStoreHelper.GetBlobStreamAsync(blob.Uri);
+
+                }
+
+                logger.Write("******** Custom Activity Ended Successfully ********");
             }
             catch (Exception e)
             {
@@ -57,6 +74,11 @@ namespace MoveBlobCustomActivityNS
             return datasets.First(ds => ds.Name == activity.Inputs.First().Name);
         }
 
+        private static Dataset GetOutputDataSet(IEnumerable<Dataset> datasets, Activity activity)
+        {
+            return datasets.First(ds => ds.Name == activity.Outputs.First().Name);
+        }
+
         private static LinkedService GetInputLinkedService(
             IEnumerable<LinkedService> linkedServices,
             Dataset inputDataset)
@@ -72,21 +94,23 @@ namespace MoveBlobCustomActivityNS
             return azureStorageLinkedService.ConnectionString;
         }
 
-        private static string GetDirectoryName(AzureBlobDataset blobDataset)
+        private static string GetDirectoryName(string folderPath)
         {
-            return blobDataset.FolderPath.Substring(
-                blobDataset.FolderPath.IndexOf("/", StringComparison.InvariantCulture) + 1);
+            return folderPath.Substring(
+                folderPath.IndexOf("/", StringComparison.InvariantCulture) + 1);
         }
 
-        private static string GetContainerName(AzureBlobDataset blobDataset)
+        private static string GetContainerName(string folderPath)
         {
-            return blobDataset.FolderPath.Substring(0,
-                blobDataset.FolderPath.IndexOf("/", StringComparison.InvariantCulture));
+            return folderPath.Substring(0,
+                folderPath.IndexOf("/", StringComparison.InvariantCulture));
         }
 
         private void LogDataFactoryElements(IEnumerable<LinkedService> linkedServices,
             IEnumerable<Dataset> datasets, Activity activity, IActivityLogger logger)
         {
+            logger.Write("\n******** Data Factory info ********");
+
             DotNetActivity dotNetActivity = (DotNetActivity) activity.TypeProperties;
 
             IDictionary<string, string> extendedProperties = dotNetActivity.ExtendedProperties;
@@ -117,6 +141,7 @@ namespace MoveBlobCustomActivityNS
 
         private static void LogBlobDataSetInfo(AzureBlobDataset blobDataset, IActivityLogger logger)
         {
+            logger.Write("\n******** Blob Storage info ********");
             logger.Write("\nBlob folder: " + blobDataset.FolderPath);
             logger.Write("\nBlob format: " + blobDataset.Format);
 
@@ -135,8 +160,33 @@ namespace MoveBlobCustomActivityNS
                 throw new Exception($"Can't find container name for dataset '{blobDataset.FolderPath}'");
             }
 
-            logger.Write("\nContainer Name {0}", GetContainerName(blobDataset));
-            logger.Write("\nDirectory Name {0}", GetDirectoryName(blobDataset));
+            logger.Write("\nContainer Name: {0}", GetContainerName(blobDataset.FolderPath));
+            logger.Write("\nDirectory Name: {0}", GetDirectoryName(blobDataset.FolderPath));
+        }
+
+        private void LogAzureDataLakeStoreInfo(AzureDataLakeStoreDataset adlsDataSet, IActivityLogger logger)
+        {
+            logger.Write("\n******** Data Lake Store info ********");
+            logger.Write("\nData folder: " + adlsDataSet.FolderPath);
+            logger.Write("\nData format: " + adlsDataSet.Format);
+
+            var partitions = adlsDataSet.PartitionedBy?.Count ?? 0;
+            logger.Write($"\nPartitions ({partitions}):");
+            for (int i = 0; i < partitions; i++)
+            {
+                logger.Write(
+                    $"\n\t{adlsDataSet.PartitionedBy?[i].Name ?? "null"}: {adlsDataSet.PartitionedBy?[i]?.Value}");
+            }
+
+            logger.Write("\nBlob file: " + adlsDataSet.FileName);
+
+            if (adlsDataSet.FolderPath.IndexOf("/", StringComparison.InvariantCulture) <= 0)
+            {
+                throw new Exception($"Can't find container name for dataset '{adlsDataSet.FolderPath}'");
+            }
+
+            logger.Write("\nContainer Name: {0}", GetContainerName(adlsDataSet.FolderPath));
+            logger.Write("\nDirectory Name: {0}", GetDirectoryName(adlsDataSet.FolderPath));
         }
     }
 }
