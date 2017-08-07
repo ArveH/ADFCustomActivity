@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -10,7 +9,7 @@ namespace TestCustomActivity
     [TestClass]
     public class TestAdlsHelper
     {
-        private static string _adlsName;
+        private const string TestFileName = "integrationtest\\sample.txt";
         private static AdlsInfo _adlsInfo;
         private static AdlsHelper _adlsHelper;
 
@@ -26,30 +25,30 @@ namespace TestCustomActivity
                 AdlsName = context.Properties["AdlsName"].ToString()
             };
 
-            _adlsName = _adlsInfo.AdlsName;
             _adlsHelper = new AdlsHelper(_adlsInfo);
         }
 
         [TestInitialize]
         public void Setup()
         {
+            _adlsHelper.DeleteFile(TestFileName).GetAwaiter().GetResult();
         }
 
         [TestCleanup]
         public void Cleanup()
         {
+            _adlsHelper.DeleteFile(TestFileName).GetAwaiter().GetResult();
         }
 
         [TestMethod]
         public async Task TestUpload()
         {
-            var fileName = "integrationtest\\sample.txt";
             using (var stream = GetTestStream("Sample text"))
             {
-                await _adlsHelper.UploadFromStreamAsync(stream, fileName);
+                await _adlsHelper.UploadFromStreamAsync(stream, TestFileName);
             }
 
-            var fileExists = await _adlsHelper.FileExistsAsync(fileName);
+            var fileExists = await _adlsHelper.FileExistsAsync(TestFileName);
             fileExists.Should().BeTrue("because file was uploaded");
         }
 

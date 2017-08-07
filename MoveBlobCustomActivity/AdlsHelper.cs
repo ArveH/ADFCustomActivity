@@ -44,6 +44,11 @@ namespace MoveBlobCustomActivityNS
             return await _adlsFileSystemClient.FileSystem.PathExistsAsync(_adlsName, path);
         }
 
+        public async Task DeleteFile(string path)
+        {
+            await _adlsFileSystemClient.FileSystem.DeleteAsync(_adlsName, path);
+        }
+
         private ServiceClientCredentials GetAccountCredentials(AdlsInfo adlsInfo)
         {
             SynchronizationContext.SetSynchronizationContext(new SynchronizationContext());
