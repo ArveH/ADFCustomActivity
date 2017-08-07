@@ -1,4 +1,6 @@
-﻿using System.Threading;
+﻿using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Management.DataLake.Store;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using Microsoft.Rest;
@@ -8,11 +10,12 @@ namespace MoveBlobCustomActivityNS
 {
     public class AdlsHelper
     {
-        private string _adlsName;
+        private readonly string _adlsName;
         private readonly DataLakeStoreFileSystemManagementClient _adlsFileSystemClient;
 
         public AdlsHelper(AdlsInfo adlsInfo)
         {
+            _adlsName = adlsInfo.AdlsName;
             var creds = GetAccountCredentials(adlsInfo);
             _adlsFileSystemClient = new DataLakeStoreFileSystemManagementClient(creds);
 
@@ -21,6 +24,24 @@ namespace MoveBlobCustomActivityNS
                 SubscriptionId = adlsInfo.AzureSubscriptionId
             };
             adlsAccountManagementClient.Account.List();
+        }
+
+        /// <summary>
+        /// Copy data from a stream into a file in the Data Lake Store.
+        /// </summary>
+        /// <param name="fromStream">The data to copy to the Data Lake Store</param>
+        /// <param name="toPath">The path in the Data Lake Store. The Data Lake Store name should not be part of this string.</param>
+        /// <returns></returns>
+        public async Task UploadFromStreamAsync(Stream fromStream, string toPath)
+        {
+            await _adlsFileSystemClient.FileSystem
+                .CreateAsync(_adlsName, toPath, fromStream, true)
+                .ConfigureAwait(false);
+        }
+
+        public async Task<bool> FileExistsAsync(string path)
+        {
+            return await _adlsFileSystemClient.FileSystem.PathExistsAsync(_adlsName, path);
         }
 
         private ServiceClientCredentials GetAccountCredentials(AdlsInfo adlsInfo)
