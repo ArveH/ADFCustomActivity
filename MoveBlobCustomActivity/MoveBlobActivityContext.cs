@@ -9,10 +9,7 @@ namespace MoveBlobCustomActivityNS
         public string ContainerName { get; set; }
         public string BlobStorageFolderPath { get; set; }
 
-        public string AzureSubscriptionId { get; set; }
-        public string AadDomain { get; set; }
-        public string AadClient { get; set; }
-        public string AadClientSecret { get; set; }
-        public string AdlsName { get; set; }
+        public AdlsInfo AdlsInfo { get; set; }
+        public string AdlsFolderPath { get; set; }
     }
 }

@@ -20,21 +20,18 @@ namespace MoveBlobCustomActivityNS
 
             var outputDataSet = GetOutputDataSet(datasets, activity);
             var adlsDataSet = outputDataSet.Properties.TypeProperties as AzureDataLakeStoreDataset;
-            LogAzureDataLakeStoreInfo(adlsDataSet, logger);
             var outputLinkedService = GetOutputLinkedService(linkedServices, outputDataSet);
+            var adlsInfo = GetAdlsInfo(outputLinkedService);
+            LogAzureDataLakeStoreInfo(adlsDataSet, adlsInfo, logger);
 
             return new MoveBlobActivityContext
             {
                 BlobStorageConnectionString = GetConnectionString(inputLinkedService),
                 ContainerName = GetContainerName(blobStoreDataset.FolderPath),
-                BlobStorageFolderPath = GetDirectoryName(blobStoreDataset.FolderPath)
+                BlobStorageFolderPath = GetDirectoryName(blobStoreDataset.FolderPath),
+                AdlsInfo = adlsInfo,
+                AdlsFolderPath = GetAdlsFolderPath(adlsDataSet)
             };
-
-        }
-
-        private LinkedService GetOutputLinkedService(IEnumerable<LinkedService> linkedServices, Dataset outputDataSet)
-        {
-            throw new NotImplementedException();
         }
 
         public override IDictionary<string, string> Execute(
@@ -43,17 +40,17 @@ namespace MoveBlobCustomActivityNS
         {
             try
             {
-                logger.Write("******** Custom Activity Ended Successfully ********");
+                logger.Write("******** Custom Activity Started ********");
                 var blobStoreHelper = new BlobStoreHelper(
                     logger, context.BlobStorageConnectionString, context.ContainerName);
+                var adlsHelper = new AdlsHelper(context.AdlsInfo);
+
                 var blobs = blobStoreHelper.ListBlobs(
                     context.ContainerName, context.BlobStorageFolderPath);
                 logger.Write("Found {0} blobs on storage account", blobs.Count);
 
                 foreach (var blob in blobs)
                 {
-                    //var stream = blobStoreHelper.GetBlobStreamAsync(blob.Uri);
-
                 }
 
                 logger.Write("******** Custom Activity Ended Successfully ********");
@@ -72,11 +69,6 @@ namespace MoveBlobCustomActivityNS
         private static Dataset GetInputDataset(IEnumerable<Dataset> datasets, Activity activity)
         {
             return datasets.First(ds => ds.Name == activity.Inputs.First().Name);
-        }
-
-        private static Dataset GetOutputDataSet(IEnumerable<Dataset> datasets, Activity activity)
-        {
-            return datasets.First(ds => ds.Name == activity.Outputs.First().Name);
         }
 
         private static LinkedService GetInputLinkedService(
@@ -104,6 +96,42 @@ namespace MoveBlobCustomActivityNS
         {
             return folderPath.Substring(0,
                 folderPath.IndexOf("/", StringComparison.InvariantCulture));
+        }
+
+        private LinkedService GetOutputLinkedService(
+            IEnumerable<LinkedService> linkedServices, 
+            Dataset outputDataSet)
+        {
+            return
+                linkedServices
+                    .First(ls => ls.Name == outputDataSet.Properties.LinkedServiceName);
+        }
+
+        private static Dataset GetOutputDataSet(IEnumerable<Dataset> datasets, Activity activity)
+        {
+            return datasets.First(ds => ds.Name == activity.Outputs.First().Name);
+        }
+
+        private AdlsInfo GetAdlsInfo(LinkedService outputLinkedService)
+        {
+            var azureDataLakeStoreLinkedService = (AzureDataLakeStoreLinkedService)outputLinkedService.Properties.TypeProperties;
+            return new AdlsInfo()
+            {
+                AzureSubscriptionId = azureDataLakeStoreLinkedService.SubscriptionId,
+                AadDomain = azureDataLakeStoreLinkedService.Tenant,
+                AadClient = azureDataLakeStoreLinkedService.ServicePrincipalId,
+                AadClientSecret = azureDataLakeStoreLinkedService.ServicePrincipalKey,
+                AdlsUri = azureDataLakeStoreLinkedService.DataLakeStoreUri,
+                AdlsName = azureDataLakeStoreLinkedService.AccountName,
+                AdlsResourceGroupName = azureDataLakeStoreLinkedService.ResourceGroupName,
+                AdlsAuthorization = azureDataLakeStoreLinkedService.Authorization,
+                AdlsSessionId = azureDataLakeStoreLinkedService.SessionId
+            };
+        }
+
+        private string GetAdlsFolderPath(AzureDataLakeStoreDataset outputDataSet)
+        {
+            return outputDataSet.FolderPath;
         }
 
         private void LogDataFactoryElements(IEnumerable<LinkedService> linkedServices,
@@ -164,9 +192,19 @@ namespace MoveBlobCustomActivityNS
             logger.Write("\nDirectory Name: {0}", GetDirectoryName(blobDataset.FolderPath));
         }
 
-        private void LogAzureDataLakeStoreInfo(AzureDataLakeStoreDataset adlsDataSet, IActivityLogger logger)
+        private void LogAzureDataLakeStoreInfo(AzureDataLakeStoreDataset adlsDataSet, AdlsInfo adlsInfo, IActivityLogger logger)
         {
             logger.Write("\n******** Data Lake Store info ********");
+            logger.Write("\nName       : " + adlsInfo.AdlsName);
+            logger.Write("\nUri        : " + adlsInfo.AdlsUri);
+            logger.Write("\nDomain     : " + adlsInfo.AadDomain);
+            logger.Write("\nClient     : " + adlsInfo.AadClient);
+            logger.Write("\nClientKey  : " + (string.IsNullOrWhiteSpace(adlsInfo.AadClientSecret) ? "<No value!>" : "********"));
+            logger.Write("\nAuthorization : " + (string.IsNullOrWhiteSpace(adlsInfo.AdlsAuthorization) ? "<No value!>" : "********"));
+            logger.Write("\nResource Group: " + adlsInfo.AdlsResourceGroupName);
+            logger.Write("\nSubscription  : " + (string.IsNullOrWhiteSpace(adlsInfo.AzureSubscriptionId) ? "<No value!>" : "********"));
+            logger.Write("\nSessionId     : " + adlsInfo.AdlsSessionId);
+
             logger.Write("\nData folder: " + adlsDataSet.FolderPath);
             logger.Write("\nData format: " + adlsDataSet.Format);
 
@@ -174,8 +212,10 @@ namespace MoveBlobCustomActivityNS
             logger.Write($"\nPartitions ({partitions}):");
             for (int i = 0; i < partitions; i++)
             {
+                var val = (DateTimePartitionValue)adlsDataSet.PartitionedBy?[i]?.Value;
+                
                 logger.Write(
-                    $"\n\t{adlsDataSet.PartitionedBy?[i].Name ?? "null"}: {adlsDataSet.PartitionedBy?[i]?.Value}");
+                    $"\n\t{adlsDataSet.PartitionedBy?[i]?.Name ?? "null"}: {val?.Date} ({val?.Format})");
             }
 
             logger.Write("\nBlob file: " + adlsDataSet.FileName);
@@ -185,8 +225,7 @@ namespace MoveBlobCustomActivityNS
                 throw new Exception($"Can't find container name for dataset '{adlsDataSet.FolderPath}'");
             }
 
-            logger.Write("\nContainer Name: {0}", GetContainerName(adlsDataSet.FolderPath));
-            logger.Write("\nDirectory Name: {0}", GetDirectoryName(adlsDataSet.FolderPath));
+            logger.Write("\nFolder path: {0}", adlsDataSet.FolderPath);
         }
     }
 }
