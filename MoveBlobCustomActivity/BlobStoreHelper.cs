@@ -51,7 +51,7 @@ namespace MoveBlobCustomActivityNS
             try
             {
                 _logger.Write("Get IListBlobItems from {0}\\{1}.....", containerName, folderPath);
-                var blobItems = _cloudBlobContainer.ListBlobs();
+                var blobItems = _cloudBlobContainer.ListBlobs(prefix:null, useFlatBlobListing:true);
                 _logger.Write("Finished getting blobs");
 
                 return new List<IListBlobItem>(blobItems);
@@ -67,6 +67,7 @@ namespace MoveBlobCustomActivityNS
 
         public async Task<MemoryStream> GetBlobStreamAsync(Uri blobUri)
         {
+            _logger.Write("Getting blob: {0}", blobUri.ToString());
             var blob = await _cloudBlobClient.GetBlobReferenceFromServerAsync(blobUri);
             var stream = new MemoryStream();
             await blob.DownloadToStreamAsync(stream);

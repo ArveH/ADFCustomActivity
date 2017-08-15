@@ -51,6 +51,19 @@ namespace MoveBlobCustomActivityNS
 
                 foreach (var blob in blobs)
                 {
+                    try
+                    {
+                        using (var stream = blobStoreHelper.GetBlobStreamAsync(blob.Uri).GetAwaiter().GetResult())
+                        {
+                            adlsHelper.UploadFromStreamAsync(stream, context.AdlsFolderPath).GetAwaiter().GetResult();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.Write("Moving blob failed with error");
+                        logger.Write("Caught exception: ");
+                        logger.Write(ex.Message);
+                    }
                 }
 
                 logger.Write("******** Custom Activity Ended Successfully ********");
