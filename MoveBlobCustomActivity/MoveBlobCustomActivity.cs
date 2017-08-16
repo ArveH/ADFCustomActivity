@@ -63,6 +63,7 @@ namespace MoveBlobCustomActivityNS
                             var fullPath = context.AdlsFolderPath + "/" + blob.Name;
                             adlsHelper.UploadFromStreamAsync(stream, fullPath).GetAwaiter().GetResult();
                         }
+                        logger.Write("Deleting file {0}...", listBlobItem.Uri.ToString());
                         blob.Delete();
                     }
                     catch (Exception ex)
