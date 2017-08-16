@@ -12,7 +12,7 @@ namespace MoveBlobCustomActivityNS
         public string AdlsUri { get; set; }
         public string AdlsName { get; set; }
         public string AdlsResourceGroupName { get; set; }
-        public string AdlsAuthorization { get; set; }
-        public string AdlsSessionId { get; set; }
+        public string AdlsAuthorization { get; set; } // Not used since we're using service-to-service authentication with client secret
+        public string AdlsSessionId { get; set; } // Not used since we're using service-to-service authentication with client secret
     }
 }

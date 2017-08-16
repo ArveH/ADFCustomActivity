@@ -65,6 +65,7 @@ namespace MoveBlobCustomActivityNS
             }
         }
 
+        // Remember to dispose the stream when done with it.
         public async Task<MemoryStream> GetBlobStreamAsync(Uri blobUri)
         {
             _logger.Write("Getting blob: {0}", blobUri.ToString());

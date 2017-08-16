@@ -14,11 +14,13 @@ namespace MoveBlobCustomActivityNS
         {
             LogDataFactoryElements(linkedServices, datasets, activity, logger);
 
+            // Getting and logging input information
             var inputDataSet = GetInputDataset(datasets, activity);
             var blobStoreDataset = inputDataSet.Properties.TypeProperties as AzureBlobDataset;
             LogBlobDataSetInfo(blobStoreDataset, logger);
             var inputLinkedService = GetInputLinkedService(linkedServices, inputDataSet);
 
+            // Getting and logging output information
             var outputDataSet = GetOutputDataSet(datasets, activity);
             var adlsDataSet = outputDataSet.Properties.TypeProperties as AzureDataLakeStoreDataset;
             var outputLinkedService = GetOutputLinkedService(linkedServices, outputDataSet);
