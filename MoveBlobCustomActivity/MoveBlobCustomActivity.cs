@@ -57,12 +57,13 @@ namespace MoveBlobCustomActivityNS
                 {
                     try
                     {
+                        var blob = (CloudBlockBlob)listBlobItem; // TODO: Check blob type. It will crash if you try to cast a CloudAppendBlob to CloudBlockBlob
                         using (var stream = blobStoreHelper.GetBlobStreamAsync(listBlobItem.Uri).GetAwaiter().GetResult())
                         {
-                            var blob = (CloudBlockBlob)listBlobItem; // TODO: Check blob type. It will crash if you try to cast a CloudAppendBlob to CloudBlockBlob
                             var fullPath = context.AdlsFolderPath + "/" + blob.Name;
                             adlsHelper.UploadFromStreamAsync(stream, fullPath).GetAwaiter().GetResult();
                         }
+                        blob.Delete();
                     }
                     catch (Exception ex)
                     {
