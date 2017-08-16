@@ -71,6 +71,7 @@ namespace MoveBlobCustomActivityNS
             var blob = await _cloudBlobClient.GetBlobReferenceFromServerAsync(blobUri);
             var stream = new MemoryStream();
             await blob.DownloadToStreamAsync(stream);
+            stream.Position = 0;
             return stream;
         }
 

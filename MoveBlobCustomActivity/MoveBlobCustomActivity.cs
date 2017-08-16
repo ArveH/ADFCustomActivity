@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.Management.DataFactories.Models;
 using Microsoft.Azure.Management.DataFactories.Runtime;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace MoveBlobCustomActivityNS
 {
@@ -43,19 +44,22 @@ namespace MoveBlobCustomActivityNS
                 logger.Write("******** Custom Activity Started ********");
                 var blobStoreHelper = new BlobStoreHelper(
                     logger, context.BlobStorageConnectionString, context.ContainerName);
-                var adlsHelper = new AdlsHelper(context.AdlsInfo);
+                var adlsHelper = new AdlsHelper(
+                    logger, context.AdlsInfo);
 
                 var blobs = blobStoreHelper.ListBlobs(
                     context.ContainerName, context.BlobStorageFolderPath);
                 logger.Write("Found {0} blobs on storage account", blobs.Count);
 
-                foreach (var blob in blobs)
+                foreach (var listBlobItem in blobs)
                 {
                     try
                     {
-                        using (var stream = blobStoreHelper.GetBlobStreamAsync(blob.Uri).GetAwaiter().GetResult())
+                        using (var stream = blobStoreHelper.GetBlobStreamAsync(listBlobItem.Uri).GetAwaiter().GetResult())
                         {
-                            adlsHelper.UploadFromStreamAsync(stream, context.AdlsFolderPath).GetAwaiter().GetResult();
+                            var blob = (CloudBlockBlob)listBlobItem; // TODO: Check blob type. It will crash if you try to cast a CloudAppendBlob to CloudBlockBlob
+                            var fullPath = context.AdlsFolderPath + "/" + blob.Name;
+                            adlsHelper.UploadFromStreamAsync(stream, fullPath).GetAwaiter().GetResult();
                         }
                     }
                     catch (Exception ex)

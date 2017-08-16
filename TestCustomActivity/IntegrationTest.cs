@@ -119,7 +119,9 @@ namespace TestCustomActivity
                 AadClientSecret = context.Properties["AadClientSecret"].ToString(),
                 AdlsName = context.Properties["AdlsName"].ToString()
             };
-            _adlsHelper = new AdlsHelper(adlsInfo);
+            var logMock = new Mock<IActivityLogger>();
+            logMock.Setup(l => l.Write(It.IsAny<string>()));
+            _adlsHelper = new AdlsHelper(logMock.Object, adlsInfo);
         }
 
         private void AdlsDeleteFile(string path)

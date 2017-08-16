@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.Management.DataFactories.Runtime;
 using Microsoft.Azure.Management.DataLake.Store;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using Microsoft.Rest;
@@ -10,11 +11,13 @@ namespace MoveBlobCustomActivityNS
 {
     public class AdlsHelper
     {
+        private readonly IActivityLogger _logger;
         private readonly string _adlsName;
         private readonly DataLakeStoreFileSystemManagementClient _adlsFileSystemClient;
 
-        public AdlsHelper(AdlsInfo adlsInfo)
+        public AdlsHelper(IActivityLogger logger, AdlsInfo adlsInfo)
         {
+            _logger = logger;
             _adlsName = adlsInfo.AdlsName;
             var creds = GetAccountCredentials(adlsInfo);
             _adlsFileSystemClient = new DataLakeStoreFileSystemManagementClient(creds);
@@ -34,6 +37,7 @@ namespace MoveBlobCustomActivityNS
         /// <returns></returns>
         public async Task UploadFromStreamAsync(Stream fromStream, string toPath)
         {
+            _logger.Write("Uploading stream to '{0}'...", toPath);
             await _adlsFileSystemClient.FileSystem
                 .CreateAsync(_adlsName, toPath, fromStream, true)
                 .ConfigureAwait(false);
@@ -46,6 +50,7 @@ namespace MoveBlobCustomActivityNS
 
         public async Task DeleteFile(string path)
         {
+            _logger.Write("Deleting '{0}'...", path);
             await _adlsFileSystemClient.FileSystem.DeleteAsync(_adlsName, path);
         }
 
